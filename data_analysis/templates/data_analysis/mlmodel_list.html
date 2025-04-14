@@ -1,0 +1,94 @@
+{% extends "data_analysis/base.html" %}
+
+{% block title %}ML Models - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin: 0;">Machine Learning Models</h2>
+            <p style="color: #757575; margin: 0.5rem 0 0 0;">
+                Train and manage machine learning models
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'data_analysis:dataset-list' %}" class="button secondary">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
+                View Datasets
+            </a>
+            <a href="{% url 'data_analysis:mlmodel-create' %}" class="button">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">add</span>
+                New Model
+            </a>
+        </div>
+    </div>
+
+    {% if mlmodels %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Dataset</th>
+                        <th>Model Type</th>
+                        <th>Features</th>
+                        <th>Target</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in mlmodels %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'data_analysis:mlmodel-detail' model.pk %}" style="text-decoration: none; color: #1976d2;">
+                                    {{ model.name }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{% url 'data_analysis:dataset-detail' model.dataset.pk %}" style="text-decoration: none; color: inherit;">
+                                    {{ model.dataset.name }}
+                                </a>
+                            </td>
+                            <td>{{ model.get_model_type_display }}</td>
+                            <td>
+                                <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                     title="{{ model.features|join:', ' }}">
+                                    {{ model.features|join:', ' }}
+                                </div>
+                            </td>
+                            <td>{{ model.target }}</td>
+                            <td>{{ model.created_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'data_analysis:mlmodel-detail' model.pk %}" class="button" style="margin: 0;">
+                                        <span class="material-icons" style="font-size: 1.2rem;">visibility</span>
+                                    </a>
+                                    <form method="post" action="{% url 'data_analysis:mlmodel-delete' model.pk %}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Are you sure you want to delete this model?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="button" style="margin: 0; background-color: #d32f2f;">
+                                            <span class="material-icons" style="font-size: 1.2rem;">delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #757575;">
+            <span class="material-icons" style="font-size: 3rem; margin-bottom: 1rem;">model_training</span>
+            <p style="margin: 0;">No machine learning models found.</p>
+            <p style="margin: 0.5rem 0 0 0;">Create your first model to get started!</p>
+            <a href="{% url 'data_analysis:mlmodel-create' %}" class="button" style="margin-top: 1rem;">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">add</span>
+                Create Model
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

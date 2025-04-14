@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Analyze Dataset - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Analyze Dataset</h2>
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Datasets
+            </a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Analysis Options</h5>
+                        <form method="post" id="analysisForm">
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-graph-up"></i> Analyze
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                {% if results %}
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Descriptive Statistics</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Metric</th>
+                                            {% for column in results.columns %}
+                                                <th>{{ column }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for metric, values in results.stats.items %}
+                                            <tr>
+                                                <td><strong>{{ metric }}</strong></td>
+                                                {% for value in values %}
+                                                    <td>{{ value|floatformat:2 }}</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if results.visualizations %}
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">Visualizations</h5>
+                                <div class="row">
+                                    {% for viz in results.visualizations %}
+                                        <div class="col-md-6 mb-4">
+                                            <div class="card">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">{{ viz.title }}</h6>
+                                                    <canvas id="chart{{ forloop.counter }}"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if results.correlations %}
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">Correlation Matrix</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                {% for column in results.columns %}
+                                                    <th>{{ column }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in results.correlations %}
+                                                <tr>
+                                                    <td><strong>{{ results.columns|index:forloop.counter0 }}</strong></td>
+                                                    {% for value in row %}
+                                                        <td class="correlation-cell" 
+                                                            style="background-color: rgba(0, 123, 255, {{ value|abs }})">
+                                                            {{ value|floatformat:2 }}
+                                                        </td>
+                                                    {% endfor %}
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Select analysis options and click Analyze to view results.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if results.visualizations %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% for viz in results.visualizations %}
+        new Chart(document.getElementById('chart{{ forloop.counter }}').getContext('2d'), 
+            {{ viz.config|safe }}
+        );
+    {% endfor %}
+});
+</script>
+{% endif %}
+{% endblock %} 

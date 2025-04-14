@@ -1,0 +1,128 @@
+{% extends 'data_analysis/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Create Machine Learning Model</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    Please correct the errors below.
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <!-- Basic Info -->
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.name.id_for_label }}">Model Name</label>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                            <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                            {{ form.name.errors }}
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="{{ form.dataset.id_for_label }}">Dataset</label>
+                            {{ form.dataset }}
+                            {% if form.dataset.help_text %}
+                            <small class="form-text text-muted">{{ form.dataset.help_text }}</small>
+                            {% endif %}
+                            {{ form.dataset.errors }}
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="{{ form.model_type.id_for_label }}">Model Type</label>
+                            {{ form.model_type }}
+                            {% if form.model_type.help_text %}
+                            <small class="form-text text-muted">{{ form.model_type.help_text }}</small>
+                            {% endif %}
+                            {{ form.model_type.errors }}
+                        </div>
+                    </div>
+
+                    <!-- Feature Selection -->
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.features.id_for_label }}">Features</label>
+                            {{ form.features }}
+                            {% if form.features.help_text %}
+                            <small class="form-text text-muted">{{ form.features.help_text }}</small>
+                            {% endif %}
+                            {{ form.features.errors }}
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="{{ form.target.id_for_label }}">Target Variable</label>
+                            {{ form.target }}
+                            {% if form.target.help_text %}
+                            <small class="form-text text-muted">{{ form.target.help_text }}</small>
+                            {% endif %}
+                            {{ form.target.errors }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Train Model</button>
+                    <a href="{% url 'data_analysis:mlmodel-list' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update feature and target choices when dataset changes
+    const datasetSelect = document.getElementById('{{ form.dataset.id_for_label }}');
+    const featuresSelect = document.getElementById('{{ form.features.id_for_label }}');
+    const targetSelect = document.getElementById('{{ form.target.id_for_label }}');
+    
+    datasetSelect.addEventListener('change', function() {
+        const datasetId = this.value;
+        if (datasetId) {
+            fetch(`/api/dataset/${datasetId}/columns/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update features select
+                    featuresSelect.innerHTML = '';
+                    data.columns.forEach(col => {
+                        const option = new Option(col, col);
+                        featuresSelect.add(option);
+                    });
+                    
+                    // Update target select
+                    targetSelect.innerHTML = '';
+                    data.columns.forEach(col => {
+                        const option = new Option(col, col);
+                        targetSelect.add(option);
+                    });
+                });
+        }
+    });
+
+    // Update model type help text
+    const modelTypeSelect = document.getElementById('{{ form.model_type.id_for_label }}');
+    const helpTexts = {
+        'RF': 'Random Forest - Good for both classification and regression, handles non-linear relationships',
+        'LR': 'Linear Regression - Best for predicting continuous values with linear relationships',
+        'LOG': 'Logistic Regression - Best for binary/multiclass classification with linear boundaries',
+        'SVM': 'Support Vector Machine - Good for high-dimensional data, works well with clear margins',
+        'DT': 'Decision Tree - Easy to interpret, handles non-linear relationships'
+    };
+
+    modelTypeSelect.addEventListener('change', function() {
+        const helpText = document.querySelector(`#${modelTypeSelect.id} + small`);
+        if (helpText) {
+            helpText.textContent = helpTexts[this.value] || '';
+        }
+    });
+});
+</script>
+{% endblock %} 

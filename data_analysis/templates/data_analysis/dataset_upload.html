@@ -1,0 +1,370 @@
+{% extends "data_analysis/base.html" %}
+{% load static %}
+
+{% block title %}Upload Dataset - Data Analysis App{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upload-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .sheet-selection {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background-color: var(--background-paper);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .preview-container {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background-color: var(--background-paper);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .help-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .file-info {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: var(--background-default);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    .form-check {
+        margin-bottom: 1rem;
+    }
+    .sheet-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .sheet-tab {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        background: none;
+    }
+    .sheet-tab:hover {
+        background-color: rgba(25, 118, 210, 0.04);
+        border-color: var(--primary-color);
+    }
+    .sheet-tab.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    .preview-table {
+        width: 100%;
+        overflow-x: auto;
+        background: var(--background-paper);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .preview-table table {
+        margin-bottom: 0;
+    }
+    .error-message {
+        color: var(--error-color);
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+    }
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+    .form-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+    .form-control {
+        background-color: var(--background-paper);
+    }
+    .form-control:focus {
+        background-color: var(--background-paper);
+    }
+    .form-select {
+        background-color: var(--background-paper);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+    .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+        outline: none;
+    }
+    .upload-progress {
+        height: 4px;
+        border-radius: 2px;
+        overflow: hidden;
+        background-color: #e0e0e0;
+    }
+    .upload-progress .progress-bar {
+        background-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="material-icons" style="vertical-align: middle;">upload_file</i>
+                Upload Dataset
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Dataset Name</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="error-message">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="error-message">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">File</label>
+                            <div class="input-group">
+                                {{ form.file }}
+                                <label class="input-group-text" for="{{ form.file.id_for_label }}">
+                                    <i class="material-icons">attach_file</i>
+                                </label>
+                            </div>
+                            {% if form.file.errors %}
+                                <div class="error-message">{{ form.file.errors }}</div>
+                            {% endif %}
+                            <div class="help-text">
+                                Supported formats: CSV, Excel (.xlsx, .xls)
+                            </div>
+                        </div>
+
+                        <div class="file-info d-none" id="fileInfo">
+                            <h6 class="mb-3">File Information</h6>
+                            <div id="fileDetails"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div id="sheetSelection" class="sheet-selection d-none">
+                            <h6 class="mb-3">Excel Sheet Selection</h6>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="{{ form.all_sheets.id_for_label }}" 
+                                       name="{{ form.all_sheets.html_name }}" checked>
+                                <label class="form-check-label" for="{{ form.all_sheets.id_for_label }}">
+                                    Load all sheets
+                                </label>
+                            </div>
+
+                            <div id="selectedSheetsDiv" class="d-none">
+                                <label for="{{ form.selected_sheets.id_for_label }}" class="form-label">Select Sheets</label>
+                                {{ form.selected_sheets }}
+                                {% if form.selected_sheets.errors %}
+                                    <div class="error-message">{{ form.selected_sheets.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-container d-none" id="previewContainer">
+                    <h6 class="mb-3">Data Preview</h6>
+                    <div class="sheet-tabs" id="sheetTabs"></div>
+                    <div class="preview-table" id="previewTable"></div>
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="upload-progress d-none mb-3" id="uploadProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                        <i class="material-icons" style="vertical-align: middle; font-size: 18px;">arrow_back</i>
+                        Back to Datasets
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="material-icons" style="vertical-align: middle; font-size: 18px;">cloud_upload</i>
+                        Upload Dataset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('#{{ form.file.id_for_label }}');
+    const sheetSelection = document.querySelector('#sheetSelection');
+    const allSheetsCheckbox = document.querySelector('#{{ form.all_sheets.id_for_label }}');
+    const selectedSheetsDiv = document.querySelector('#selectedSheetsDiv');
+    const fileInfo = document.querySelector('#fileInfo');
+    const fileDetails = document.querySelector('#fileDetails');
+    const uploadProgress = document.querySelector('#uploadProgress');
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    const form = document.querySelector('#uploadForm');
+    const previewContainer = document.querySelector('#previewContainer');
+    const sheetTabs = document.querySelector('#sheetTabs');
+    const previewTable = document.querySelector('#previewTable');
+    const loadingSpinner = document.querySelector('#loadingSpinner');
+
+    async function loadSheetPreview(sheetName = null) {
+        loadingSpinner.style.display = 'block';
+        previewTable.innerHTML = '';
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        if (sheetName) {
+            formData.append('sheet_name', sheetName);
+        }
+
+        try {
+            const response = await fetch('{% url "data_analysis:preview-data" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            const data = await response.json();
+            
+            if (data.preview) {
+                previewTable.innerHTML = data.preview;
+            }
+        } catch (error) {
+            console.error('Error loading preview:', error);
+            previewTable.innerHTML = '<div class="alert alert-danger">Error loading preview</div>';
+        } finally {
+            loadingSpinner.style.display = 'none';
+        }
+    }
+
+    fileInput.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show file information
+        fileInfo.classList.remove('d-none');
+        fileDetails.innerHTML = `
+            <div class="mb-2"><strong>Name:</strong> ${file.name}</div>
+            <div class="mb-2"><strong>Size:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+            <div><strong>Type:</strong> ${file.type || 'application/vnd.ms-excel'}</div>
+        `;
+
+        // Show/hide sheet selection based on file type
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            sheetSelection.classList.remove('d-none');
+            
+            // Get sheet names
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('{% url "data_analysis:get-sheets" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.sheets) {
+                    // Update sheet selection dropdown
+                    const selectElement = document.querySelector('#{{ form.selected_sheets.id_for_label }}');
+                    selectElement.innerHTML = '';
+                    data.sheets.forEach(sheet => {
+                        const option = document.createElement('option');
+                        option.value = sheet;
+                        option.textContent = sheet;
+                        selectElement.appendChild(option);
+                    });
+
+                    // Create sheet tabs for preview
+                    sheetTabs.innerHTML = '';
+                    data.sheets.forEach((sheet, index) => {
+                        const tab = document.createElement('button');
+                        tab.type = 'button';
+                        tab.className = `sheet-tab${index === 0 ? ' active' : ''}`;
+                        tab.textContent = sheet;
+                        tab.onclick = () => {
+                            document.querySelectorAll('.sheet-tab').forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+                            loadSheetPreview(sheet);
+                        };
+                        sheetTabs.appendChild(tab);
+                    });
+
+                    // Load preview for first sheet
+                    if (data.sheets.length > 0) {
+                        loadSheetPreview(data.sheets[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting sheet names:', error);
+            }
+        } else {
+            sheetSelection.classList.add('d-none');
+            loadSheetPreview();  // Load preview for CSV
+        }
+
+        previewContainer.classList.remove('d-none');
+    });
+
+    allSheetsCheckbox.addEventListener('change', function() {
+        selectedSheetsDiv.classList.toggle('d-none', this.checked);
+    });
+
+    form.addEventListener('submit', function() {
+        uploadProgress.classList.remove('d-none');
+        progressBar.style.width = '0%';
+        
+        const interval = setInterval(function() {
+            const width = parseInt(progressBar.style.width);
+            if (width < 90) {
+                progressBar.style.width = (width + 1) + '%';
+            }
+        }, 100);
+
+        setTimeout(function() {
+            clearInterval(interval);
+        }, 10000);
+    });
+});
+</script>
+{% endblock %} 

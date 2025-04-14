@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create ML Model - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Create ML Model</h2>
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Datasets
+            </a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" id="modelForm">
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            
+                            <div class="progress mb-3 d-none" id="trainingProgress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-play"></i> Train Model
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Model Types</h5>
+                        <div class="accordion" id="modelTypeHelp">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#regressionHelp">
+                                        Regression
+                                    </button>
+                                </h2>
+                                <div id="regressionHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#modelTypeHelp">
+                                    <div class="accordion-body">
+                                        Use regression when predicting continuous numerical values.
+                                        Examples: price prediction, sales forecasting.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#classificationHelp">
+                                        Classification
+                                    </button>
+                                </h2>
+                                <div id="classificationHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#modelTypeHelp">
+                                    <div class="accordion-body">
+                                        Use classification when predicting categories or classes.
+                                        Examples: spam detection, customer segmentation.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#clusteringHelp">
+                                        Clustering
+                                    </button>
+                                </h2>
+                                <div id="clusteringHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#modelTypeHelp">
+                                    <div class="accordion-body">
+                                        Use clustering for finding patterns and grouping similar data points.
+                                        Examples: customer segmentation, anomaly detection.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('modelForm').addEventListener('submit', function() {
+    document.getElementById('trainingProgress').classList.remove('d-none');
+});
+
+document.getElementById('id_model_type').addEventListener('change', function() {
+    const selectedType = this.value;
+    document.querySelectorAll('.accordion-collapse').forEach(collapse => {
+        collapse.classList.remove('show');
+    });
+    document.querySelector(`#${selectedType}Help`).classList.add('show');
+});
+</script>
+{% endblock %} 

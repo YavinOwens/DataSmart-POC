@@ -1,0 +1,215 @@
+{% extends "data_analysis/base.html" %}
+{% load data_analysis_filters %}
+
+{% block title %}{{ dataset.name }} - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin: 0;">{{ dataset.name }}</h2>
+            <p style="color: #757575; margin: 0.5rem 0 0 0;">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem; font-size: 1.2rem;">calendar_today</span>
+                Uploaded on {{ dataset.uploaded_at|date:"F j, Y" }}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'data_analysis:dataset-export' dataset.pk %}" class="button">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">download</span>
+                Export
+            </a>
+            <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" class="button">
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">analytics</span>
+                Analyze
+            </a>
+        </div>
+    </div>
+
+    {% if dataset.description %}
+        <div style="margin-bottom: 2rem;">
+            <p>{{ dataset.description }}</p>
+        </div>
+    {% endif %}
+
+    <div class="card" style="margin-bottom: 2rem; background-color: #f8f9fa;">
+        <h3 style="margin-bottom: 1rem;">Dataset Overview</h3>
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <tbody>
+                    <tr>
+                        <th style="width: 200px;">Number of Rows</th>
+                        <td>{{ dataset_info.rows }}</td>
+                    </tr>
+                    <tr>
+                        <th>Number of Columns</th>
+                        <td>{{ dataset_info.columns }}</td>
+                    </tr>
+                    <tr>
+                        <th>File Size</th>
+                        <td>{{ dataset_info.size|filesizeformat }}</td>
+                    </tr>
+                    <tr>
+                        <th>Memory Usage</th>
+                        <td>{{ dataset_info.memory_usage|filesizeformat }}</td>
+                    </tr>
+                    <tr>
+                        <th>Numeric Columns</th>
+                        <td>{{ dataset_info.numeric_columns|join:", " }}</td>
+                    </tr>
+                    <tr>
+                        <th>Categorical Columns</th>
+                        <td>{{ dataset_info.categorical_columns|join:", " }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if dataset_info.numeric_stats %}
+        <div class="card" style="margin-bottom: 2rem; background-color: #f8f9fa;">
+            <h3 style="margin-bottom: 1rem;">Numeric Column Statistics</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Mean</th>
+                            <th>Std Dev</th>
+                            <th>Min</th>
+                            <th>Max</th>
+                            <th>Missing</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for col, stats in dataset_info.numeric_stats.items %}
+                            <tr>
+                                <td>{{ col }}</td>
+                                <td>{{ stats.mean|floatformat:2 }}</td>
+                                <td>{{ stats.std|floatformat:2 }}</td>
+                                <td>{{ stats.min|floatformat:2 }}</td>
+                                <td>{{ stats.max|floatformat:2 }}</td>
+                                <td>{{ stats.missing }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if dataset_info.categorical_stats %}
+        <div class="card" style="margin-bottom: 2rem; background-color: #f8f9fa;">
+            <h3 style="margin-bottom: 1rem;">Categorical Column Statistics</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Unique Values</th>
+                            <th>Most Common Values</th>
+                            <th>Missing</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for col, stats in dataset_info.categorical_stats.items %}
+                            <tr>
+                                <td>{{ col }}</td>
+                                <td>{{ stats.unique_values }}</td>
+                                <td>
+                                    {% for value, count in stats.most_common.items %}
+                                        <div>{{ value }}: {{ count }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>{{ stats.missing }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if recent_analyses %}
+        <div class="card" style="margin-bottom: 2rem; background-color: #f8f9fa;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="margin: 0;">Recent Analyses</h3>
+                    <p style="color: #757575; margin: 0.5rem 0 0 0;">
+                        Total analyses: {{ analysis_stats.total }}
+                    </p>
+                </div>
+                <a href="{% url 'data_analysis:analysis-list' %}?dataset={{ dataset.pk }}" class="button secondary" style="margin: 0;">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">history</span>
+                    View All
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for analysis in recent_analyses %}
+                            <tr>
+                                <td>{{ analysis.get_analysis_type_display }}</td>
+                                <td>{{ analysis.created_at|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'data_analysis:analysis-detail' analysis.pk %}" class="button" style="margin: 0;">
+                                        <span class="material-icons" style="font-size: 1.2rem;">visibility</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if analysis_stats.by_type %}
+                <div style="margin-top: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">Analysis Types</h4>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        {% for type in analysis_stats.by_type %}
+                            <div style="background-color: #fff; padding: 0.5rem 1rem; border-radius: 4px; border: 1px solid #e0e0e0;">
+                                {{ type.get_analysis_type_display }}: {{ type.count }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div>
+        <h3 style="margin-bottom: 1rem;">Data Preview</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        {% for column in preview.columns %}
+                            <th>
+                                {{ column }}
+                                <small style="display: block; color: #757575;">{{ preview.dtypes|get_item:column }}</small>
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview.values %}
+                        <tr>
+                            {% for value in row %}
+                                <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="color: #757575; text-align: center; margin-top: 1rem;">
+            Showing first 5 rows of the dataset
+        </p>
+    </div>
+</div>
+{% endblock %} 

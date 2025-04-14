@@ -1,0 +1,76 @@
+{% extends "data_analysis/base.html" %}
+
+{% block title %}Analysis History - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin: 0;">Analysis History</h2>
+            {% if dataset %}
+                <p style="color: #757575; margin: 0.5rem 0 0 0;">
+                    For dataset: {{ dataset.name }}
+                </p>
+            {% endif %}
+        </div>
+        <div>
+            {% if dataset %}
+                <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="button secondary">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
+                    Back to Dataset
+                </a>
+                <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" class="button">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">add</span>
+                    New Analysis
+                </a>
+            {% else %}
+                <a href="{% url 'data_analysis:dataset-list' %}" class="button">
+                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
+                    View Datasets
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if analyses %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Dataset</th>
+                        <th>Analysis Type</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for analysis in analyses %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'data_analysis:dataset-detail' analysis.dataset.pk %}" style="text-decoration: none; color: #1976d2;">
+                                    {{ analysis.dataset.name }}
+                                </a>
+                            </td>
+                            <td>{{ analysis.get_analysis_type_display }}</td>
+                            <td>{{ analysis.created_at|date:"M d, Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'data_analysis:analysis-detail' analysis.pk %}" class="button" style="margin: 0;">
+                                    <span class="material-icons" style="font-size: 1.2rem;">visibility</span>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem; color: #757575;">
+            <span class="material-icons" style="font-size: 3rem; margin-bottom: 1rem;">analytics</span>
+            <p style="margin: 0;">No analyses found.</p>
+            {% if dataset %}
+                <p style="margin: 0.5rem 0 0 0;">Create your first analysis for {{ dataset.name }}!</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Data Transformation - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Data Transformation</h2>
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Datasets
+            </a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" id="transformationForm">
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            
+                            <div class="progress mb-3 d-none" id="transformProgress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-arrow-repeat"></i> Transform Data
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Transformation Types</h5>
+                        <div class="accordion" id="transformationTypeHelp">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#normalizeHelp">
+                                        Normalize
+                                    </button>
+                                </h2>
+                                <div id="normalizeHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#transformationTypeHelp">
+                                    <div class="accordion-body">
+                                        Scales numerical features to a fixed range (usually [0,1]).
+                                        Best used when the data doesn't follow a Gaussian distribution.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#standardizeHelp">
+                                        Standardize
+                                    </button>
+                                </h2>
+                                <div id="standardizeHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#transformationTypeHelp">
+                                    <div class="accordion-body">
+                                        Transforms data to have zero mean and unit variance.
+                                        Best used when the data follows a Gaussian distribution.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#encodeHelp">
+                                        Label Encode
+                                    </button>
+                                </h2>
+                                <div id="encodeHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#transformationTypeHelp">
+                                    <div class="accordion-body">
+                                        Converts categorical variables into numerical values.
+                                        Best used for ordinal categorical variables.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#onehotHelp">
+                                        One-Hot Encode
+                                    </button>
+                                </h2>
+                                <div id="onehotHelp" class="accordion-collapse collapse" 
+                                     data-bs-parent="#transformationTypeHelp">
+                                    <div class="accordion-body">
+                                        Creates binary columns for each category.
+                                        Best used for nominal categorical variables.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('transformationForm').addEventListener('submit', function() {
+    document.getElementById('transformProgress').classList.remove('d-none');
+});
+
+document.getElementById('id_transformation_type').addEventListener('change', function() {
+    const selectedType = this.value;
+    document.querySelectorAll('.accordion-collapse').forEach(collapse => {
+        collapse.classList.remove('show');
+    });
+    document.querySelector(`#${selectedType}Help`).classList.add('show');
+});
+</script>
+{% endblock %} 

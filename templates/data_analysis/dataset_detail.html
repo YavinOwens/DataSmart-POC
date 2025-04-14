@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ dataset.name }} - Data Analysis App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{{ dataset.name }}</h2>
+            <div class="btn-group">
+                <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" 
+                   class="btn btn-success">
+                    <i class="bi bi-graph-up"></i> Analyze
+                </a>
+                <button type="button" 
+                        class="btn btn-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Dataset Info</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Size:</strong> {{ dataset.size|filesizeformat }}</li>
+                            <li><strong>Rows:</strong> {{ dataset.row_count }}</li>
+                            <li><strong>Columns:</strong> {{ dataset.column_count }}</li>
+                            <li><strong>Uploaded:</strong> {{ dataset.uploaded_at|date:"M d, Y H:i" }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Column Information</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Non-Null</th>
+                                        <th>Memory</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for col in columns %}
+                                        <tr>
+                                            <td>{{ col.name }}</td>
+                                            <td><code>{{ col.dtype }}</code></td>
+                                            <td>{{ col.non_null_count }}</td>
+                                            <td>{{ col.memory_usage|filesizeformat }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Data Preview</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm" id="prevPage">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                            Page <span id="currentPage">1</span> of <span id="totalPages">{{ total_pages }}</span>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="nextPage">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm" id="dataTable">
+                        <thead>
+                            <tr>
+                                {% for col in preview.columns %}
+                                    <th>{{ col }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in preview.values %}
+                                <tr>
+                                    {% for value in row %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Dataset</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "{{ dataset.name }}"?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{% url 'data_analysis:dataset-delete' dataset.pk %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const currentPageSpan = document.getElementById('currentPage');
+    const totalPagesSpan = document.getElementById('totalPages');
+    const dataTable = document.getElementById('dataTable');
+    
+    let currentPage = 1;
+    const totalPages = parseInt(totalPagesSpan.textContent);
+
+    function updatePagination() {
+        currentPageSpan.textContent = currentPage;
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+    }
+
+    function loadPage(page) {
+        fetch(`?page=${page}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = dataTable.querySelector('tbody');
+                tbody.innerHTML = '';
+                
+                data.preview.forEach(row => {
+                    const tr = document.createElement('tr');
+                    Object.values(row).forEach(value => {
+                        const td = document.createElement('td');
+                        td.textContent = value;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            updatePagination();
+            loadPage(currentPage);
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            updatePagination();
+            loadPage(currentPage);
+        }
+    });
+
+    updatePagination();
+});
+</script>
+{% endblock %} 
