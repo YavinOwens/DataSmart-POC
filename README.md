@@ -60,6 +60,17 @@ A Django-based web application for data analysis and machine learning. This appl
 *   Uses a local Ollama model (`phi4` by default) to generate responses.
 *   Provides basic dataset context (columns, preview) to the model.
 
+### Analysis Results (Statistics)
+![Analysis Results - Statistics](rsc/analysisResults.png)
+*   Displays basic descriptive statistics (Mean, Std Dev, Min, Max, Percentiles) for numeric columns.
+*   Clear tabular presentation using Bootstrap 5.
+
+### Analysis Results (Visualizations)
+![Analysis Results - Distribution](rsc/Visualistion.png)
+*   Shows visualizations for analysis types like Distribution (histogram) or Correlation (heatmap).
+*   Uses Plotly.js for interactive charts.
+*   Includes relevant summary statistics alongside plots.
+
 ## Technology Stack
 
 - Python 3.10+

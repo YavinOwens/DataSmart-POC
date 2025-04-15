@@ -1,76 +1,80 @@
-{% extends "data_analysis/base.html" %}
+{% extends 'base.html' %}
 
 {% block title %}Analysis History - Data Analysis App{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div>
-            <h2 style="margin: 0;">Analysis History</h2>
-            {% if dataset %}
-                <p style="color: #757575; margin: 0.5rem 0 0 0;">
-                    For dataset: {{ dataset.name }}
-                </p>
-            {% endif %}
-        </div>
-        <div>
-            {% if dataset %}
-                <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="button secondary">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
-                    Back to Dataset
-                </a>
-                <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" class="button">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">add</span>
-                    New Analysis
-                </a>
-            {% else %}
-                <a href="{% url 'data_analysis:dataset-list' %}" class="button">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
-                    View Datasets
-                </a>
-            {% endif %}
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-clipboard-data text-primary"></i> Analysis History
+        {% if dataset %}
+            <span class="text-muted fw-normal fs-5"> for "{{ dataset.name }}"</span>
+        {% endif %}
+    </h2>
+    <div>
+        {% if dataset %}
+            <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Back to Dataset
+            </a>
+            <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> New Analysis
+            </a>
+        {% else %}
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-table"></i> View Datasets
+            </a>
+        {% endif %}
     </div>
+</div>
 
-    {% if analyses %}
+{% if analyses %}
+    <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table">
-                <thead>
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>Dataset</th>
+                        <th class="ps-3">Dataset</th>
                         <th>Analysis Type</th>
                         <th>Created</th>
-                        <th>Actions</th>
+                        <th class="text-end pe-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for analysis in analyses %}
                         <tr>
-                            <td>
-                                <a href="{% url 'data_analysis:dataset-detail' analysis.dataset.pk %}" style="text-decoration: none; color: #1976d2;">
-                                    {{ analysis.dataset.name }}
-                                </a>
+                            <td class="ps-3">
+                                <a href="{% url 'data_analysis:dataset-detail' analysis.dataset.pk %}">{{ analysis.dataset.name }}</a>
                             </td>
-                            <td>{{ analysis.get_analysis_type_display }}</td>
-                            <td>{{ analysis.created_at|date:"M d, Y H:i" }}</td>
-                            <td>
-                                <a href="{% url 'data_analysis:analysis-detail' analysis.pk %}" class="button" style="margin: 0;">
-                                    <span class="material-icons" style="font-size: 1.2rem;">visibility</span>
+                            <td><span class="badge bg-secondary">{{ analysis.get_analysis_type_display }}</span></td>
+                            <td class="small text-muted">{{ analysis.created_at|date:"M d, Y H:i" }}</td>
+                            <td class="text-end pe-3">
+                                <a href="{% url 'data_analysis:analysis-detail' analysis.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View Results
                                 </a>
+                                {# Add delete button if needed #}
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    {% else %}
-        <div style="text-align: center; padding: 2rem; color: #757575;">
-            <span class="material-icons" style="font-size: 3rem; margin-bottom: 1rem;">analytics</span>
-            <p style="margin: 0;">No analyses found.</p>
+    </div>
+{% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-clipboard-x display-4 text-muted mb-3"></i>
+            <h5 class="card-title text-muted">No analyses found.</h5>
             {% if dataset %}
-                <p style="margin: 0.5rem 0 0 0;">Create your first analysis for {{ dataset.name }}!</p>
+                <p class="text-muted mb-4">Create your first analysis for "{{ dataset.name }}"!</p>
+                <a href="{% url 'data_analysis:analysis-create' %}?dataset={{ dataset.pk }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Create Analysis
+                </a>
+            {% else %}
+                 <p class="text-muted mb-4">Perform an analysis on a dataset to see the history here.</p>
+                 <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-secondary">
+                    <i class="bi bi-table"></i> View Datasets
+                 </a>
             {% endif %}
         </div>
-    {% endif %}
-</div>
+    </div>
+{% endif %}
 {% endblock %} 
