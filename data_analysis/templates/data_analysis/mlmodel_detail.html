@@ -1,138 +1,144 @@
-{% extends "data_analysis/base.html" %}
+{% extends 'base.html' %}
 
-{% block title %}{{ mlmodel.name }} - Data Analysis App{% endblock %}
+{% block title %}{{ mlmodel.name }} - ML Model Details{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col">
-        <h2>{{ mlmodel.name }}</h2>
-        <p class="text-muted">
-            {{ mlmodel.get_model_type_display }} trained on {{ mlmodel.dataset.name }}
-            <br>
-            Created on {{ mlmodel.created_at|date:"F d, Y" }} at {{ mlmodel.created_at|time:"H:i" }}
-        </p>
-    </div>
-    <div class="col text-end">
-        <a href="{% url 'data_analysis:dataset-detail' mlmodel.dataset.pk %}" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left"></i> Back to Dataset
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-cpu-fill text-primary"></i> {{ mlmodel.name }}
+    </h2>
+    <div>
+        <a href="{% url 'data_analysis:dataset-detail' mlmodel.dataset.pk %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-file-earmark-spreadsheet"></i> View Dataset: {{ mlmodel.dataset.name }}
+        </a>
+         <a href="{% url 'data_analysis:mlmodel-list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Models
         </a>
     </div>
 </div>
 
+<p class="text-muted mb-4">
+    {{ mlmodel.get_model_type_display }} trained on {{ mlmodel.dataset.name }}. 
+    Created: {{ mlmodel.created_at|date:"M d, Y, P" }}
+</p>
+
 <div class="row">
+    <!-- Left Column: Model Info & Features -->
     <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Model Information</h5>
-                <ul class="list-unstyled">
-                    <li><strong>Type:</strong> {{ mlmodel.get_model_type_display }}</li>
-                    <li><strong>Dataset:</strong> {{ mlmodel.dataset.name }}</li>
-                    <li><strong>Target:</strong> {{ mlmodel.target }}</li>
-                    <li><strong>Features:</strong> {{ mlmodel.features|length }}</li>
+        <div class="card shadow-sm mb-4">
+             <div class="card-header bg-light">
+                <h5 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Model Information</h5>
+            </div>
+            <div class="card-body small">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-1"><strong>Type:</strong> <span class="badge bg-secondary">{{ mlmodel.get_model_type_display }}</span></li>
+                    <li class="mb-1"><strong>Dataset:</strong> {{ mlmodel.dataset.name }}</li>
+                    <li><strong>Target Variable:</strong> <code>{{ mlmodel.target }}</code></li>
                 </ul>
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Feature List</h5>
-                <div class="list-group list-group-flush">
-                    {% for feature in mlmodel.features %}
-                        <div class="list-group-item">{{ feature }}</div>
-                    {% endfor %}
-                </div>
+        <div class="card shadow-sm mb-4">
+             <div class="card-header bg-light">
+                <h5 class="card-title mb-0"><i class="bi bi-list-task me-2"></i>Features Used ({{ mlmodel.features|length }})</h5>
+            </div>
+            <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                {% for feature in mlmodel.features %}
+                    <div class="list-group-item py-1 px-3 small">{{ feature }}</div>
+                {% empty %}
+                    <div class="list-group-item text-muted small">No features listed.</div>
+                {% endfor %}
             </div>
         </div>
     </div>
 
+    <!-- Right Column: Performance Metrics -->
     <div class="col-md-8">
-        <div class="card">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Model Performance Metrics</h5>
+            </div>
             <div class="card-body">
-                <h5 class="card-title">Model Performance</h5>
-                
-                {% if mlmodel.model_type in 'RF,LOG,SVM,DT' %}
-                    <!-- Classification Metrics -->
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">Accuracy</h6>
-                                    <h3>{{ mlmodel.metrics.accuracy|floatformat:3 }}</h3>
+                {% if mlmodel.metrics %}
+                    {% if mlmodel.model_type in 'RF,LOG,SVM,DT' %} <!-- Classification Metrics -->
+                        <div class="row row-cols-1 row-cols-sm-2 g-3">
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">Accuracy</h6>
+                                        <h4>{{ mlmodel.metrics.accuracy|floatformat:3 }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">F1 Score (Weighted)</h6>
+                                        <h4>{{ mlmodel.metrics.f1|floatformat:3 }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">Precision (Weighted)</h6>
+                                        <h4>{{ mlmodel.metrics.precision|floatformat:3 }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">Recall (Weighted)</h6>
+                                        <h4>{{ mlmodel.metrics.recall|floatformat:3 }}</h4>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">F1 Score</h6>
-                                    <h3>{{ mlmodel.metrics.f1|floatformat:3 }}</h3>
+                        <div class="alert alert-secondary small mt-4">
+                            <strong>Accuracy:</strong> Proportion of correct predictions.<br>
+                            <strong>Precision:</strong> Ability to not label negative samples as positive (weighted avg).<br>
+                            <strong>Recall:</strong> Ability to find all positive samples (weighted avg).<br>
+                            <strong>F1 Score:</strong> Harmonic mean of precision and recall (weighted avg).
+                        </div>
+                    {% else %} <!-- Regression Metrics -->
+                        <div class="row row-cols-1 row-cols-sm-3 g-3">
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">R² Score</h6>
+                                        <h4>{{ mlmodel.metrics.r2|floatformat:3 }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">Mean Squared Error (MSE)</h6>
+                                        <h4>{{ mlmodel.metrics.mse|floatformat:3 }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">Root Mean Squared Error (RMSE)</h6>
+                                        <h4>{{ mlmodel.metrics.rmse|floatformat:3 }}</h4>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">Precision</h6>
-                                    <h3>{{ mlmodel.metrics.precision|floatformat:3 }}</h3>
-                                </div>
-                            </div>
+                        <div class="alert alert-secondary small mt-4">
+                             <strong>R² Score:</strong> Proportion of variance explained by the model (1 is perfect).<br>
+                             <strong>MSE:</strong> Mean squared error (lower is better).<br>
+                             <strong>RMSE:</strong> Root mean squared error (in target units, lower is better).
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">Recall</h6>
-                                    <h3>{{ mlmodel.metrics.recall|floatformat:3 }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {% endif %}
                 {% else %}
-                    <!-- Regression Metrics -->
-                    <div class="row">
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">R² Score</h6>
-                                    <h3>{{ mlmodel.metrics.r2|floatformat:3 }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">MSE</h6>
-                                    <h3>{{ mlmodel.metrics.mse|floatformat:3 }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <h6 class="card-subtitle mb-2 text-muted">RMSE</h6>
-                                    <h3>{{ mlmodel.metrics.rmse|floatformat:3 }}</h3>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="alert alert-warning text-center">
+                        <i class="bi bi-exclamation-triangle me-2"></i> No performance metrics available for this model yet.
                     </div>
                 {% endif %}
-
-                <div class="alert alert-info mt-3">
-                    <h6 class="alert-heading">About These Metrics</h6>
-                    {% if mlmodel.model_type in 'RF,LOG,SVM,DT' %}
-                        <p class="mb-0">
-                            <strong>Accuracy:</strong> Proportion of correct predictions.<br>
-                            <strong>Precision:</strong> Proportion of true positives among positive predictions.<br>
-                            <strong>Recall:</strong> Proportion of actual positives correctly identified.<br>
-                            <strong>F1 Score:</strong> Harmonic mean of precision and recall.
-                        </p>
-                    {% else %}
-                        <p class="mb-0">
-                            <strong>R² Score:</strong> Proportion of variance explained by the model.<br>
-                            <strong>MSE:</strong> Mean squared error of predictions.<br>
-                            <strong>RMSE:</strong> Root mean squared error (in target units).
-                        </p>
-                    {% endif %}
-                </div>
             </div>
         </div>
     </div>

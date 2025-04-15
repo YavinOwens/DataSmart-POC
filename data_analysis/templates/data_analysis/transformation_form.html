@@ -1,223 +1,168 @@
-{% extends 'data_analysis/base.html' %}
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
 
-{% block extra_head %}
-<style>
-.parameter-group {
-    display: none;
-}
-.parameter-group.active {
-    display: block;
-}
-.preview-table {
-    max-height: 400px;
-    overflow-y: auto;
-}
-.transformation-card {
-    margin-bottom: 2rem;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-</style>
-{% endblock %}
+{% block title %}Transform Dataset - {{ dataset.name }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Transform Dataset: {{ dataset.name }}</h2>
-        <div>
-            <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="btn btn-secondary">
-                Back to Dataset
-            </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-wrench text-primary"></i> Transform Dataset: {{ dataset.name }}
+    </h2>
+    <div>
+        <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dataset
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Transformation Form -->
+    <div class="col-lg-5 mb-4 mb-lg-0">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0"><i class="bi bi-gear-fill me-2"></i>Transformation Options</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="transformationForm">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="mt-4 d-flex justify-content-between">
+                        <button type="button" class="btn btn-info" id="previewBtn">
+                            <i class="bi bi-eye"></i> Preview
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Apply Transformation
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Transformation Form -->
-        <div class="col-md-5">
-            <div class="card transformation-card">
-                <div class="card-header">
-                    <h4>Data Transformation</h4>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="transformationForm">
-                        {% csrf_token %}
-                        
-                        {% if form.errors %}
-                        <div class="alert alert-danger">
-                            Please correct the errors below.
-                        </div>
-                        {% endif %}
-
-                        <!-- Transformation Type -->
-                        <div class="form-group mb-3">
-                            <label for="{{ form.transformation_type.id_for_label }}">Transformation Type</label>
-                            {{ form.transformation_type }}
-                            {% if form.transformation_type.help_text %}
-                            <small class="form-text text-muted">{{ form.transformation_type.help_text }}</small>
-                            {% endif %}
-                            {{ form.transformation_type.errors }}
-                        </div>
-
-                        <!-- Operation Selection -->
-                        <div class="form-group mb-3">
-                            <label for="{{ form.operation.id_for_label }}">Operation</label>
-                            {{ form.operation }}
-                            {% if form.operation.help_text %}
-                            <small class="form-text text-muted">{{ form.operation.help_text }}</small>
-                            {% endif %}
-                            {{ form.operation.errors }}
-                        </div>
-
-                        <!-- Column Selection -->
-                        <div class="form-group mb-3">
-                            <label for="{{ form.columns.id_for_label }}">Columns</label>
-                            {{ form.columns }}
-                            {% if form.columns.help_text %}
-                            <small class="form-text text-muted">{{ form.columns.help_text }}</small>
-                            {% endif %}
-                            {{ form.columns.errors }}
-                        </div>
-
-                        <!-- Additional Parameters -->
-                        <div id="binningParams" class="parameter-group">
-                            <div class="form-group mb-3">
-                                <label for="{{ form.n_bins.id_for_label }}">Number of Bins</label>
-                                {{ form.n_bins }}
-                                {% if form.n_bins.help_text %}
-                                <small class="form-text text-muted">{{ form.n_bins.help_text }}</small>
-                                {% endif %}
-                                {{ form.n_bins.errors }}
-                            </div>
-                        </div>
-
-                        <div id="polynomialParams" class="parameter-group">
-                            <div class="form-group mb-3">
-                                <label for="{{ form.polynomial_degree.id_for_label }}">Polynomial Degree</label>
-                                {{ form.polynomial_degree }}
-                                {% if form.polynomial_degree.help_text %}
-                                <small class="form-text text-muted">{{ form.polynomial_degree.help_text }}</small>
-                                {% endif %}
-                                {{ form.polynomial_degree.errors }}
-                            </div>
-                        </div>
-
-                        <div id="powerParams" class="parameter-group">
-                            <div class="form-group mb-3">
-                                <label for="{{ form.power_value.id_for_label }}">Power Value</label>
-                                {{ form.power_value }}
-                                {% if form.power_value.help_text %}
-                                <small class="form-text text-muted">{{ form.power_value.help_text }}</small>
-                                {% endif %}
-                                {{ form.power_value.errors }}
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <button type="button" class="btn btn-info" id="previewBtn">Preview Transformation</button>
-                            <button type="submit" class="btn btn-primary">Apply Transformation</button>
-                        </div>
-                    </form>
-                </div>
+    <!-- Preview Section -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                 <h5 class="card-title mb-0"><i class="bi bi-eye-fill me-2"></i>Preview</h5>
             </div>
-        </div>
-
-        <!-- Preview Section -->
-        <div class="col-md-7">
-            <div class="card transformation-card">
-                <div class="card-header">
-                    <h4>Preview</h4>
-                </div>
-                <div class="card-body">
-                    <div id="previewContent">
-                        <div class="alert alert-info">
-                            Select transformation options and click "Preview" to see the results.
-                        </div>
+            <div class="card-body">
+                <div id="previewMessage" class="mb-3">
+                    <div class="alert alert-secondary small">
+                        <i class="bi bi-info-circle me-1"></i> Select transformation options and click "Preview" to see the results here.
                     </div>
-                    <div id="previewTable" class="preview-table"></div>
+                </div>
+                <div id="previewTableContainer" class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                    {# Preview table will be inserted here by JS #}
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const transformationType = document.getElementById('{{ form.transformation_type.id_for_label }}');
-    const operation = document.getElementById('{{ form.operation.id_for_label }}');
+    const transformationTypeSelect = document.getElementById('id_transformation_type');
+    const operationSelect = document.getElementById('id_operation');
     const previewBtn = document.getElementById('previewBtn');
-    
-    // Operation choices for each transformation type
+    const previewMessageDiv = document.getElementById('previewMessage');
+    const previewTableContainer = document.getElementById('previewTableContainer');
+    const form = document.getElementById('transformationForm');
+
+    // Define operation choices based on form definition (adjust if necessary)
     const operationChoices = {
-        'CLEAN': {{ form.CLEANING_OPERATIONS|safe }},
-        'ENCODE': {{ form.ENCODING_OPERATIONS|safe }},
-        'SCALE': {{ form.SCALING_OPERATIONS|safe }},
-        'ENGINEER': {{ form.ENGINEERING_OPERATIONS|safe }}
+        'CLEAN': {{ form.CLEANING_OPERATIONS|default:'[]'|safe }},
+        'ENCODE': {{ form.ENCODING_OPERATIONS|default:'[]'|safe }},
+        'SCALE': {{ form.SCALING_OPERATIONS|default:'[]'|safe }},
+        'ENGINEER': {{ form.ENGINEERING_OPERATIONS|default:'[]'|safe }}
     };
 
-    // Update operations when transformation type changes
-    transformationType.addEventListener('change', function() {
-        const choices = operationChoices[this.value] || [];
-        operation.innerHTML = '';
+    function updateOperationOptions() {
+        const selectedType = transformationTypeSelect.value;
+        const choices = operationChoices[selectedType] || [];
+        operationSelect.innerHTML = ''; // Clear existing options
         choices.forEach(([value, label]) => {
             const option = new Option(label, value);
-            operation.add(option);
+            operationSelect.add(option);
         });
-        updateParameterGroups();
-    });
+        // Trigger change event to update parameter visibility
+        operationSelect.dispatchEvent(new Event('change'));
+    }
 
-    // Update parameter groups when operation changes
-    operation.addEventListener('change', updateParameterGroups);
+    function updateParameterVisibility() {
+        const selectedOperation = operationSelect.value;
+        
+        // Assuming crispy forms wraps fields. Find parent wrappers.
+        const nBinsWrapper = document.getElementById('div_id_n_bins');
+        const degreeWrapper = document.getElementById('div_id_polynomial_degree');
+        const powerWrapper = document.getElementById('div_id_power_value');
+        
+        // Hide all optional parameters initially
+        if(nBinsWrapper) nBinsWrapper.style.display = 'none';
+        if(degreeWrapper) degreeWrapper.style.display = 'none';
+        if(powerWrapper) powerWrapper.style.display = 'none';
 
-    function updateParameterGroups() {
-        // Hide all parameter groups
-        document.querySelectorAll('.parameter-group').forEach(group => {
-            group.classList.remove('active');
-        });
-
-        // Show relevant parameter group
-        const currentOperation = operation.value;
-        if (currentOperation === 'binning') {
-            document.getElementById('binningParams').classList.add('active');
-        } else if (currentOperation === 'polynomial') {
-            document.getElementById('polynomialParams').classList.add('active');
-        } else if (currentOperation === 'power') {
-            document.getElementById('powerParams').classList.add('active');
+        // Show based on selection
+        if (selectedOperation === 'binning' && nBinsWrapper) {
+            nBinsWrapper.style.display = 'block';
+        } else if (selectedOperation === 'polynomial' && degreeWrapper) {
+            degreeWrapper.style.display = 'block';
+        } else if (selectedOperation === 'power' && powerWrapper) {
+            powerWrapper.style.display = 'block';
         }
     }
 
-    // Preview functionality
-    previewBtn.addEventListener('click', function() {
-        const formData = new FormData(document.getElementById('transformationForm'));
-        formData.append('preview', 'true');
+    // Event Listeners
+    if (transformationTypeSelect) {
+        transformationTypeSelect.addEventListener('change', updateOperationOptions);
+        // Initial population
+        updateOperationOptions(); 
+    }
+    
+    if (operationSelect) {
+         operationSelect.addEventListener('change', updateParameterVisibility);
+         // Initial visibility check
+         updateParameterVisibility();
+    }
 
-        fetch('{% url "data_analysis:transform-preview" dataset.pk %}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                document.getElementById('previewContent').innerHTML = `
-                    <div class="alert alert-danger">${data.error}</div>
-                `;
-            } else {
-                document.getElementById('previewContent').innerHTML = `
-                    <div class="alert alert-success">
-                        <h5>Transformation Preview</h5>
-                        <p>${data.message}</p>
-                    </div>
-                `;
-                document.getElementById('previewTable').innerHTML = data.preview_table;
-            }
-        })
-        .catch(error => {
-            document.getElementById('previewContent').innerHTML = `
-                <div class="alert alert-danger">Error generating preview: ${error}</div>
-            `;
+    // Preview Button Logic
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            const formData = new FormData(form);
+            // Clear previous preview
+            previewTableContainer.innerHTML = '';
+            previewMessageDiv.innerHTML = '<div class="alert alert-info small"><i class="bi bi-hourglass-split me-1"></i> Generating preview...</div>'; 
+
+            fetch('{% url "data_analysis:transform-preview" dataset.pk %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                    'Accept': 'application/json' // Expect JSON back
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    previewMessageDiv.innerHTML = `<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i> Error: ${data.error}</div>`;
+                } else {
+                    previewMessageDiv.innerHTML = `<div class="alert alert-success small"><i class="bi bi-info-circle me-1"></i> Preview generated: ${data.message}</div>`;
+                    previewTableContainer.innerHTML = data.preview_table; // Assuming data.preview_table contains the HTML table
+                }
+            })
+            .catch(error => {
+                console.error('Preview Error:', error);
+                previewMessageDiv.innerHTML = `<div class="alert alert-danger small"><i class="bi bi-exclamation-triangle me-1"></i> Error generating preview. Check console for details.</div>`;
+            });
         });
-    });
+    }
 });
 </script>
 {% endblock %} 

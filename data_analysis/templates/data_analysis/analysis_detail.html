@@ -1,164 +1,153 @@
-{% extends "data_analysis/base.html" %}
-{% load static %}
+{% extends 'base.html' %}
 
 {% block title %}{{ analysis.get_analysis_type_display }} - {{ analysis.dataset.name }}{% endblock %}
 
-{% block extra_head %}
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <style>
-    .analysis-card {
-        margin-bottom: 2rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+{% block extra_css %}
+{# Keep Plotly JS loading #}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+    /* Ensure Plotly charts have a minimum height */
+    .plotly-chart-container {
+        min-height: 450px;
     }
-    .chart-container {
-        height: 500px;
-        margin: 2rem 0;
+    /* Adjust heatmap layout slightly */
+    #correlation-matrix {
+         min-height: 550px; /* Ensure enough space for labels */
     }
-    .stats-table th {
-        width: 40%;
-    }
-    .correlation-matrix {
-        width: 100%;
-        height: 600px;
-    }
-    .distribution-plot {
-        width: 100%;
-        height: 400px;
-        margin-bottom: 2rem;
-    }
-    </style>
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Analysis Results</h2>
-        <div>
-            <a href="{% url 'data_analysis:dataset-detail' analysis.dataset.pk %}" class="btn btn-secondary">
-                Back to Dataset
-            </a>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-clipboard-data text-primary"></i> Analysis Results
+    </h2>
+    <div>
+        <a href="{% url 'data_analysis:dataset-detail' analysis.dataset.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dataset: {{ analysis.dataset.name }}
+        </a>
     </div>
+</div>
 
-    <div class="card analysis-card">
-        <div class="card-header">
-            <h4>{{ analysis.get_analysis_type_display }} for {{ analysis.dataset.name }}</h4>
-            <small class="text-muted">Created on {{ analysis.created_at|date:"F j, Y, P" }}</small>
-        </div>
-        <div class="card-body">
-            {% if analysis.analysis_type == 'STATS' %}
-                <div class="table-responsive">
-                    <table class="table table-striped stats-table">
-                        <thead>
-                            <tr>
-                                <th>Column</th>
-                                <th>Mean</th>
-                                <th>Std</th>
-                                <th>Min</th>
-                                <th>25%</th>
-                                <th>50%</th>
-                                <th>75%</th>
-                                <th>Max</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for column, stats in analysis.results.items %}
-                            <tr>
-                                <td><strong>{{ column }}</strong></td>
-                                <td>{{ stats.mean|floatformat:2 }}</td>
-                                <td>{{ stats.std|floatformat:2 }}</td>
-                                <td>{{ stats.min|floatformat:2 }}</td>
-                                <td>{{ stats.percentile_25|floatformat:2 }}</td>
-                                <td>{{ stats.percentile_50|floatformat:2 }}</td>
-                                <td>{{ stats.percentile_75|floatformat:2 }}</td>
-                                <td>{{ stats.max|floatformat:2 }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h4 class="mb-0">{{ analysis.get_analysis_type_display }}</h4>
+        <small class="text-muted">Dataset: {{ analysis.dataset.name }} | Created: {{ analysis.created_at|date:"M d, Y, P" }}</small>
+    </div>
+    <div class="card-body">
+        {% if analysis.analysis_type == 'STATS' %}
+            <h5>Basic Statistics</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Column</th>
+                            <th>Mean</th>
+                            <th>Std Dev</th>
+                            <th>Min</th>
+                            <th>25%</th>
+                            <th>Median (50%)</th>
+                            <th>75%</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for column, stats in analysis.results.items %}
+                        <tr>
+                            <td><strong>{{ column }}</strong></td>
+                            <td>{{ stats.mean|floatformat:2 }}</td>
+                            <td>{{ stats.std|floatformat:2 }}</td>
+                            <td>{{ stats.min|floatformat:2 }}</td>
+                            <td>{{ stats.percentile_25|floatformat:2 }}</td>
+                            <td>{{ stats.percentile_50|floatformat:2 }}</td>
+                            <td>{{ stats.percentile_75|floatformat:2 }}</td>
+                            <td>{{ stats.max|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">No numeric columns found for statistics.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        {% elif analysis.analysis_type == 'CORR' %}
+            <h5>Correlation Matrix</h5>
+            <div id="correlation-matrix" class="plotly-chart-container"></div>
+            <script>
+                var data = {{ analysis.results.matrix|safe }};
+                var layout = {
+                    title: 'Correlation Heatmap',
+                    xaxis: { tickangle: -45, automargin: true },
+                    yaxis: { automargin: true },
+                    margin: { l: 100, r: 50, b: 100, t: 50, pad: 4 },
+                    autosize: true
+                };
+                Plotly.newPlot('correlation-matrix', [{
+                    z: data.values,
+                    x: data.columns,
+                    y: data.columns,
+                    type: 'heatmap',
+                    colorscale: 'RdBu',
+                    zmin: -1,
+                    zmax: 1,
+                    hoverongaps: false
+                }], layout, {responsive: true});
+            </script>
+
+        {% elif analysis.analysis_type == 'DIST' %}
+            <h5>Distribution Analysis</h5>
+            {% for column, stats in analysis.results.items %}
+            <div class="card mb-4 border">
+                <div class="card-header">
+                    <h6>Distribution of {{ column }}</h6>
                 </div>
-
-            {% elif analysis.analysis_type == 'CORR' %}
-                <div id="correlation-matrix" class="correlation-matrix"></div>
-                <script>
-                    var data = {{ analysis.results.matrix|safe }};
-                    var layout = {
-                        title: 'Correlation Matrix',
-                        xaxis: {
-                            tickangle: 45,
-                            automargin: true
-                        },
-                        yaxis: {
-                            automargin: true
-                        },
-                        margin: {
-                            l: 150,
-                            r: 50,
-                            b: 150,
-                            t: 50,
-                            pad: 4
-                        }
-                    };
-                    Plotly.newPlot('correlation-matrix', [{
-                        z: data.values,
-                        x: data.columns,
-                        y: data.columns,
-                        type: 'heatmap',
-                        colorscale: 'RdBu',
-                        zmin: -1,
-                        zmax: 1
-                    }], layout);
-                </script>
-
-            {% elif analysis.analysis_type == 'DIST' %}
-                {% for column, stats in analysis.results.items %}
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5>Distribution of {{ column }}</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="dist-plot-{{ forloop.counter }}" class="distribution-plot"></div>
-                        <script>
-                            var trace = {
-                                x: {{ stats.bins|safe }},
-                                y: {{ stats.counts|safe }},
-                                type: 'bar',
-                                name: 'Frequency'
-                            };
-                            
-                            var layout = {
-                                title: 'Distribution of {{ column }}',
-                                xaxis: {title: '{{ column }}'},
-                                yaxis: {title: 'Frequency'},
-                                bargap: 0.05,
-                                showlegend: false
-                            };
-                            
-                            Plotly.newPlot('dist-plot-{{ forloop.counter }}', [trace], layout);
-                        </script>
-                        
-                        <div class="mt-3">
-                            <h6>Summary Statistics</h6>
-                            <table class="table table-sm">
+                <div class="card-body">
+                    <div id="dist-plot-{{ forloop.counter }}" class="plotly-chart-container" style="min-height: 350px;"></div>
+                    <div class="mt-3">
+                        <h6 class="text-muted">Summary Statistics</h6>
+                        <table class="table table-sm small border-top">
+                            <tbody>
                                 <tr>
-                                    <th>Mean</th>
+                                    <th scope="row">Mean</th>
                                     <td>{{ stats.mean|floatformat:2 }}</td>
-                                    <th>Std Dev</th>
+                                    <th scope="row">Std Dev</th>
                                     <td>{{ stats.std|floatformat:2 }}</td>
                                 </tr>
                                 <tr>
-                                    <th>Skewness</th>
+                                    <th scope="row">Skewness</th>
                                     <td>{{ stats.skewness|floatformat:2 }}</td>
-                                    <th>Kurtosis</th>
+                                    <th scope="row">Kurtosis</th>
                                     <td>{{ stats.kurtosis|floatformat:2 }}</td>
                                 </tr>
-                            </table>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+                    <script>
+                        var trace_{{ forloop.counter }} = {
+                            x: {{ stats.bins|safe }},
+                            y: {{ stats.counts|safe }},
+                            type: 'bar',
+                            name: 'Frequency'
+                        };
+                        var layout_{{ forloop.counter }} = {
+                            title: '', // Title removed as it's in card header
+                            xaxis: { title: '{{ column }} Value Bins' },
+                            yaxis: { title: 'Frequency' },
+                            bargap: 0.05,
+                            margin: { l: 50, r: 20, b: 40, t: 20 }, // Compact margin
+                            autosize: true,
+                            showlegend: false
+                        };
+                        Plotly.newPlot('dist-plot-{{ forloop.counter }}', [trace_{{ forloop.counter }}], layout_{{ forloop.counter }}, {responsive: true});
+                    </script>
                 </div>
-                {% endfor %}
-            {% endif %}
-        </div>
+            </div>
+            {% empty %}
+            <p class="text-center text-muted">No numeric columns found for distribution analysis.</p>
+            {% endfor %}
+        {% endif %}
     </div>
 </div>
 {% endblock %} 

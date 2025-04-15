@@ -249,9 +249,26 @@ class TransformationForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         if dataset:
-            df = dataset.read_file()
-            self.fields['columns'].choices = [(col, col) for col in df.columns]
+            df_or_dict = dataset.read_file()
+            
+            # Handle multi-sheet Excel files: use the first sheet
+            if isinstance(df_or_dict, dict):
+                first_sheet_name = list(df_or_dict.keys())[0]
+                df = df_or_dict[first_sheet_name]
+                # Consider adding a message or handling sheet selection later
+            elif isinstance(df_or_dict, pd.DataFrame):
+                df = df_or_dict
+            else:
+                df = None # Or raise an error/handle appropriately
+            
+            if df is not None:
+                self.fields['columns'].choices = [(col, col) for col in df.columns]
+            else:
+                # Handle case where df couldn't be loaded
+                self.fields['columns'].choices = [] 
+                # Optionally disable the field or add an error
         
+        # Set initial operation choices (can be updated in clean method or JS)
         self.fields['operation'].choices = self.CLEANING_OPERATIONS
 
     def clean(self):
