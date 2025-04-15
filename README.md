@@ -53,6 +53,13 @@ A Django-based web application for data analysis and machine learning. This appl
 *   Quick actions: View details, Delete (with confirmation modal).
 *   Clear call-to-action to train a new model.
 
+### Chatbot Assistant
+![Chatbot Interface](rsc/chatbot.png)
+*   Select a dataset to discuss.
+*   Chat interface for asking questions about the selected dataset.
+*   Uses a local Ollama model (`phi4` by default) to generate responses.
+*   Provides basic dataset context (columns, preview) to the model.
+
 ## Technology Stack
 
 - Python 3.10+

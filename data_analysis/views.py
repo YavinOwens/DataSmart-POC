@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View, TemplateView
 from django.urls import reverse_lazy
 import pandas as pd
 import numpy as np
@@ -15,6 +15,8 @@ from django.db import models
 from django.core.files.base import ContentFile
 from datetime import datetime
 import os
+import requests
+import json
 
 class DatasetListView(ListView):
     """
@@ -721,3 +723,138 @@ class PreviewDataView(View):
             
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
+
+class ChatbotView(TemplateView):
+    """
+    View for the dataset chatbot assistant.
+    Handles displaying the chat interface and processing user messages.
+    """
+    template_name = 'data_analysis/chatbot.html'
+    ollama_api_url = "http://localhost:11434/api/chat"
+    model_name = "phi4" # Use the downloaded model
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        dataset_id = self.request.GET.get('dataset_id')
+        selected_dataset = None
+        datasets = Dataset.objects.all().order_by('-uploaded_at')
+
+        if dataset_id:
+            try:
+                selected_dataset = Dataset.objects.get(pk=dataset_id)
+            except Dataset.DoesNotExist:
+                messages.error(self.request, "Selected dataset not found.")
+                dataset_id = None # Reset if not found
+        
+        # If no dataset selected or selection invalid, maybe pick the latest?
+        # Or require selection. For now, we allow no selection.
+        # if not selected_dataset and datasets.exists():
+        #     selected_dataset = datasets.first()
+
+        context['datasets'] = datasets
+        context['selected_dataset'] = selected_dataset
+        context['conversation'] = self.request.session.get('chatbot_conversation', [])
+        
+        return context
+
+    def post(self, request, *args, **kwargs):
+        user_message = request.POST.get('message')
+        dataset_id = request.POST.get('dataset_id')
+        conversation = request.session.get('chatbot_conversation', [])
+
+        if not user_message:
+            messages.error(request, "Please enter a message.")
+            return self.render_to_response(self.get_context_data())
+            
+        if not dataset_id:
+             messages.error(request, "Please select a dataset first.")
+             # Redirect or render? Render seems better here.
+             return self.render_to_response(self.get_context_data())
+
+        try:
+            dataset = Dataset.objects.get(pk=dataset_id)
+        except Dataset.DoesNotExist:
+            messages.error(request, "Selected dataset not found.")
+            request.session['chatbot_conversation'] = [] # Clear conversation
+            return self.render_to_response(self.get_context_data())
+
+        # Add user message to conversation
+        conversation.append({'role': 'user', 'content': user_message})
+
+        # --- Prepare context for the LLM --- 
+        try:
+            # Get some data preview and column info
+            df_or_dict = dataset.read_file()
+            if isinstance(df_or_dict, dict):
+                first_sheet_name = list(df_or_dict.keys())[0]
+                df = df_or_dict[first_sheet_name]
+                sheet_context = f" (from sheet: {first_sheet_name})"
+            else:
+                df = df_or_dict
+                sheet_context = ""
+                
+            if df is not None:
+                preview = df.head(3).to_string()
+                columns = ", ".join(df.columns)
+                context_prompt = f"You are a helpful assistant analyzing the dataset '{dataset.name}'{sheet_context}. \
+                                   The dataset has columns: {columns}. \
+                                   Here are the first few rows:\n{preview}\n\nUser asks: {user_message}\
+Assistant:"
+            else:
+                 context_prompt = f"You are a helpful assistant. The user selected dataset '{dataset.name}', but it could not be read. Please inform the user.\n\nUser asks: {user_message}\
+Assistant:"
+                 
+        except Exception as e:
+            # Handle error reading dataset for context
+            context_prompt = f"You are a helpful assistant. An error occurred while reading data from '{dataset.name}'. Please inform the user about the error: {str(e)}\n\nUser asks: {user_message}\
+Assistant:"
+            messages.warning(request, f"Could not read dataset for full context: {e}")
+        # --- Call Ollama API --- 
+        try:
+            payload = {
+                "model": self.model_name,
+                "messages": conversation, # Send previous messages for context 
+                # "stream": False # Keep it simple for now
+                # Add the prepared context prompt within the message structure if needed
+                # For now, let's rely on the model's general ability + conversation history
+                # A more robust approach might involve a system prompt + user message
+            }
+            
+            # Update last user message with context (simple approach)
+            # --- Important: We modify the *copy* of the conversation for the API call --- 
+            api_conversation = list(conversation) # Create a copy
+            api_conversation[-1]['content'] = context_prompt # Overwrite user message with full context prompt
+            payload['messages'] = api_conversation # Use updated conversation for API call
+            # The user message in the `conversation` variable (and session) remains the original one.
+
+            response = requests.post(self.ollama_api_url, json=payload, timeout=60) # 60 second timeout
+            response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+            
+            response_data = response.json()
+            assistant_message = response_data.get('message', {}).get('content', '').strip()
+
+            # Add assistant message to conversation
+            if assistant_message:
+                conversation.append({'role': 'assistant', 'content': assistant_message})
+            else:
+                # Handle empty response if necessary
+                conversation.append({'role': 'assistant', 'content': "(No response content from model)"})
+
+            request.session['chatbot_conversation'] = conversation
+            request.session.modified = True # Ensure session is saved
+
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f"Error communicating with Ollama: {e}")
+            # Remove the user message we added earlier since the API call failed
+            conversation.pop()
+            request.session['chatbot_conversation'] = conversation
+            request.session.modified = True
+        except Exception as e:
+            messages.error(request, f"An unexpected error occurred: {e}")
+            # Remove the user message we added earlier
+            conversation.pop()
+            request.session['chatbot_conversation'] = conversation
+            request.session.modified = True
+            
+        # Re-render the page with updated conversation
+        return self.render_to_response(self.get_context_data())

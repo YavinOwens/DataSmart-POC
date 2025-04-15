@@ -20,4 +20,5 @@ urlpatterns = [
     path('mlmodel/<int:pk>/', views.MLModelDetailView.as_view(), name='mlmodel-detail'),
     path('dataset/<int:pk>/transform/', TransformationView.as_view(), name='transform'),
     path('dataset/<int:pk>/transform-preview/', TransformationPreviewView.as_view(), name='transform-preview'),
+    path('chatbot/', views.ChatbotView.as_view(), name='chatbot'),
 ] 
