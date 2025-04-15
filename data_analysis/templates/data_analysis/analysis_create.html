@@ -1,80 +1,86 @@
-{% extends "data_analysis/base.html" %}
-{% load data_analysis_filters %}
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
 
 {% block title %}Create Analysis - Data Analysis App{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <div>
-            <h2 style="margin: 0;">Create Analysis</h2>
-            {% if dataset %}
-                <p style="color: #757575; margin: 0.5rem 0 0 0;">
-                    Dataset: <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" style="color: inherit; text-decoration: underline;">{{ dataset.name }}</a>
-                </p>
-            {% endif %}
-        </div>
-        <div>
-            {% if dataset %}
-                <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="button secondary">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
-                    Back to Dataset
-                </a>
-            {% else %}
-                <a href="{% url 'data_analysis:dataset-list' %}" class="button secondary">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
-                    View Datasets
-                </a>
-            {% endif %}
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="bi bi-bar-chart-line-fill text-primary"></i> Create Analysis
+    </h2>
+    <div>
+        {% if dataset %}
+            <a href="{% url 'data_analysis:dataset-detail' dataset.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Dataset: {{ dataset.name }}
+            </a>
+        {% else %}
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-table"></i> View Datasets
+            </a>
+        {% endif %}
     </div>
+</div>
 
-    {% if dataset %}
-        <form method="post">
-            {% csrf_token %}
-            {{ form.dataset }}
-            
-            <div style="margin-bottom: 2rem;">
-                <h3 style="margin-bottom: 1rem;">Select Analysis Type</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+{% if dataset %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.dataset }}
+
+                <h5 class="card-title mb-3">Select Analysis Type</h5>
+                <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
                     {% for value, label in form.fields.analysis_type.choices %}
-                        <div class="analysis-type-option" style="background-color: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 1px solid #e0e0e0;">
-                            <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                                <div style="margin-top: 0.25rem;">
-                                    <input type="radio" name="analysis_type" value="{{ value }}" id="id_analysis_type_{{ forloop.counter0 }}" 
-                                           {% if form.analysis_type.value == value %}checked{% endif %} 
-                                           class="form-check-input">
-                                </div>
-                                <div>
-                                    <label for="id_analysis_type_{{ forloop.counter0 }}" style="font-weight: 500; margin-bottom: 0.5rem; display: block;">
-                                        {{ label }}
-                                    </label>
-                                    <p style="color: #757575; margin: 0;">
-                                        {{ form.fields.analysis_type.help_text|get_item:value }}
-                                    </p>
+                        <div class="col">
+                            <div class="card h-100">
+                                <div class="card-body d-flex align-items-start">
+                                    <div class="form-check me-3 mt-1">
+                                        <input class="form-check-input" type="radio" name="analysis_type" 
+                                               id="id_analysis_type_{{ forloop.counter0 }}" 
+                                               value="{{ value }}" {% if form.analysis_type.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}>
+                                    </div>
+                                    <div>
+                                        <label class="form-check-label fw-bold" for="id_analysis_type_{{ forloop.counter0 }}">
+                                            {{ label }}
+                                        </label>
+                                        {# Add descriptions for analysis types if available #}
+                                        {% if value == 'STATS' %}
+                                            <p class="card-text text-muted small mb-0">Calculate basic descriptive statistics like mean, median, standard deviation for numeric columns.</p>
+                                        {% elif value == 'CORR' %}
+                                            <p class="card-text text-muted small mb-0">Compute the pairwise correlation matrix for all numeric columns in the dataset.</p>
+                                        {% elif value == 'DIST' %}
+                                            <p class="card-text text-muted small mb-0">Analyze the distribution of numeric columns, including histograms and key statistical measures.</p>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     {% endfor %}
                 </div>
-            </div>
+                
+                {% if form.analysis_type.errors %}
+                    <div class="alert alert-danger">
+                        {{ form.analysis_type.errors }}
+                    </div>
+                {% endif %}
 
-            <div style="text-align: right;">
-                <button type="submit" class="button">
-                    <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">analytics</span>
-                    Create Analysis
-                </button>
-            </div>
-        </form>
-    {% else %}
-        <div style="text-align: center; padding: 2rem; color: #757575;">
-            <span class="material-icons" style="font-size: 3rem; margin-bottom: 1rem;">dataset</span>
-            <p style="margin: 0;">Please select a dataset first.</p>
-            <a href="{% url 'data_analysis:dataset-list' %}" class="button" style="margin-top: 1rem;">
-                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">dataset</span>
-                View Datasets
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-play-fill"></i> Create Analysis
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-table display-4 text-muted mb-3"></i>
+            <h5 class="card-title text-muted">Please select a dataset first.</h5>
+            <a href="{% url 'data_analysis:dataset-list' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-table"></i> View Datasets
             </a>
         </div>
-    {% endif %}
-</div>
+    </div>
+{% endif %}
 {% endblock %} 

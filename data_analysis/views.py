@@ -171,10 +171,25 @@ class AnalysisCreateView(CreateView):
         return context
 
     def form_valid(self, form):
-        """Process the analysis form and create the analysis object."""
         analysis = form.save(commit=False)
-        df = analysis.dataset.read_file()
+        dataset = analysis.dataset
         
+        # Read the dataset file
+        df_or_dict = dataset.read_file()
+        
+        # Handle multi-sheet Excel files: use the first sheet
+        if isinstance(df_or_dict, dict):
+            first_sheet_name = list(df_or_dict.keys())[0]
+            df = df_or_dict[first_sheet_name]
+            # Optionally, inform the user which sheet was used
+            messages.info(self.request, f"Analyzing the first sheet: '{first_sheet_name}'")
+        elif isinstance(df_or_dict, pd.DataFrame):
+            df = df_or_dict
+        else:
+            messages.error(self.request, "Could not read the dataset file correctly.")
+            return self.form_invalid(form)
+        
+        # Perform analysis based on the type
         if analysis.analysis_type == 'STATS':
             # Calculate basic statistics for numeric columns
             numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
